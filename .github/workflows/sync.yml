@@ -1,0 +1,38 @@
+name: Sync source index.html
+
+on:
+  schedule:
+    # 每 5 分钟拉取一次源仓库的 index.html，有变化则自动提交
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: sync
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch daletou_fenxi/index.html
+        run: curl -fsSL https://raw.githubusercontent.com/Tony0726/daletou_fenxi/main/index.html -o fenxi/index.html
+
+      - name: Fetch daletou_yuce/index.html
+        run: curl -fsSL https://raw.githubusercontent.com/Tony0726/daletou_yuce/main/index.html -o yuce/index.html
+
+      - name: Commit and push if changed
+        run: |
+          if git diff --quiet; then
+            echo "✅ 源文件无变化，跳过提交"
+            exit 0
+          fi
+          git config user.name "sync-bot"
+          git config user.email "sync-bot@users.noreply.github.com"
+          git add fenxi/index.html yuce/index.html
+          git commit -m "sync: 同步源仓库 index.html $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push

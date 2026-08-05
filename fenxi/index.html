@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>大乐透历史走势分析表</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Microsoft YaHei', 'PingFang SC', -apple-system, sans-serif; background: #f0f2f5; color: #333; font-size: 14px; -webkit-tap-highlight-color: transparent; }
+
+/* ===== 头部 ===== */
+.header { background: linear-gradient(135deg, #e53935, #d32f2f); color: #fff; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.header h1 { font-size: 22px; }
+.header .sub { font-size: 13px; opacity: 0.85; }
+#dataStatus { font-size: 13px; color: #ffcdd2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46%; flex-shrink: 1; }
+
+/* ===== 布局 ===== */
+.container { max-width: 100%; padding: 12px; }
+.panel { background: #fff; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.table-panel { position: relative; }
+
+/* ===== 操作区 ===== */
+.controls { display: flex; flex-wrap: nowrap; gap: 10px; align-items: center; margin-bottom: 8px; }
+.controls > .field, .controls > .btn { flex: 1 1 0; min-width: 0; }
+.field { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.controls label { font-size: 14px; color: #555; white-space: nowrap; }
+.controls input[type="number"], .controls select { padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; width: 80px; background: #fff; }
+.controls input[type="number"]:focus, .controls select:focus { outline: none; border-color: #d32f2f; }
+/* 表切换 Tab（模仿 daletou_yuce.html 的分段样式） */
+.tabs { display: flex; gap: 4px; background: #f0f2f5; border-radius: 8px; padding: 4px; margin-top: 10px; }
+.tab-btn { flex: 1; padding: 12px 8px; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; background: transparent; color: #666; transition: all .2s; touch-action: manipulation; }
+.tab-btn:hover { background: #fce4e4; color: #d32f2f; }
+.tab-btn.active { background: #d32f2f; color: #fff; box-shadow: 0 1px 3px rgba(211,47,47,.35); }
+.radio-group { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.radio-group label { display: flex; align-items: center; gap: 4px; cursor: pointer; font-size: 14px; }
+.radio-group input[type="radio"] { accent-color: #d32f2f; width: 15px; height: 15px; }
+.btn { padding: 10px 18px; border: none; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; transition: all .2s; touch-action: manipulation; }
+.btn:active { transform: scale(.97); }
+.btn-primary { background: #d32f2f; color: #fff; }
+.btn-primary:hover { background: #b71c1c; }
+.btn-success { background: #43a047; color: #fff; }
+.btn-success:hover { background: #2e7d32; }
+.btn-info { background: #1976d2; color: #fff; }
+.btn-info:hover { background: #0d47a1; }
+#dataInfo { color: #888; font-size: 13px; margin-top: 4px; }
+
+/* ===== 表格区 ===== */
+#tableInfo { font-size: 13px; color: #d32f2f; font-weight: 600; margin-bottom: 8px; }
+.table-tip { font-size: 12px; color: #999; margin-bottom: 6px; }
+.table-tip b { font-weight: 600; }
+.table-footer { display: flex; justify-content: center; gap: 12px; padding-top: 10px; }
+.table-footer .btn { min-width: 150px; }
+/* 表格容器：水平+垂直滚动，表头吸顶 */
+#tableWrap { overflow: auto; max-height: calc(100vh - 240px); max-height: calc(100dvh - 250px); border: 1px solid #eee; border-radius: 8px; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+.lottery-table { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+.lottery-table th, .lottery-table td { border: 1px solid #e0e0e0; padding: 3px 7px; text-align: center; min-width: 38px; }
+.lottery-table thead th { position: sticky; top: 0; background: #d32f2f; color: #fff; font-weight: 600; z-index: 2; box-shadow: 0 1px 0 #e0e0e0; }
+.lottery-table tbody tr:hover td { background: #fff3e0; }
+.lottery-table .sum-row td { background: #fff8e1; }
+.lottery-table .sum-row td:first-child { font-weight: 700; color: #e65100; }
+
+/* 期号锚点列吸左（横向滚动时保持定位） */
+.lottery-table th.sticky, .lottery-table td.sticky { position: sticky; left: 0; z-index: 2; }
+.lottery-table td.sticky { background: #fff; }
+.lottery-table tbody tr:hover td.sticky { background: #ffe6c4; }
+.lottery-table .sum-row td.sticky { background: #fff8e1; }
+.lottery-table thead th.sticky { top: 0; left: 0; z-index: 5; }
+
+.c-red { color: #ff0000; font-weight: 700; }
+.c-blue { color: #0000ff; font-weight: 700; }
+.c-green { color: #00c800; }
+.c-orange { color: #ffa500; font-weight: 700; }
+
+/* ===== 图例 ===== */
+.legend { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; font-size: 12px; color: #666; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.legend .sw-red { background: #ff0000; }
+.legend .sw-blue { background: #0000ff; }
+.legend .sw-green { background: #00c800; }
+.legend .sw-orange { background: #ffa500; }
+
+/* ===== 加载遮罩 ===== */
+#loadingOverlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 999999; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
+#loadingOverlay.show { display: flex; }
+.loading-spinner { width: 52px; height: 52px; border: 5px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
+.loading-text { color: #fff; font-size: 16px; font-weight: 600; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ================= 手机竖屏 & 横屏（含小平板）：应用式全屏布局 ================= */
+@media (max-width: 768px), (max-height: 520px) {
+  body { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+  .header { flex-shrink: 0; padding: 6px 14px; }
+  .header h1 { font-size: 15px; }
+  .header .sub { display: none; }
+  .container { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px; overflow: hidden; }
+  .panel { flex-shrink: 0; padding: 8px; margin-bottom: 0; }
+  .panel.table-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #tableInfo { font-size: 12px; margin-bottom: 4px; }
+  .table-tip { display: none; }
+  #tableWrap { flex: 1; min-height: 0; max-height: none; border-radius: 6px; }
+
+  /* 操作区第一行：期数下拉 / 获取最新数据 / 刷新 均匀占满一整行 */
+  .controls { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 8px; margin-bottom: 0; }
+  .field { flex-direction: column; justify-content: center; gap: 4px; }
+  .field label { font-size: 11px; text-align: center; }
+  .field select { font-size: 14px; width: 100%; padding: 5px 4px; text-align: center; }
+  .controls > .btn { padding: 9px 4px; font-size: 15px; min-height: 40px; }
+  /* 表切换（第二行）：分段 Tab */
+  .tabs { margin: 6px 0 2px; padding: 2px; }
+  .tab-btn { padding: 6px 4px; font-size: 15px; }
+  /* 底部按钮栏：导出 + 返回顶部 并排，紧凑 */
+  .table-footer { flex: 0 0 auto; gap: 8px; padding: 5px 0 calc(6px + env(safe-area-inset-bottom)); }
+  .table-footer .btn { flex: 1; min-width: 0; width: auto; padding: 9px 8px; font-size: 15px; }
+
+  .legend, #dataInfo { display: none; }
+  .lottery-table th, .lottery-table td { padding: 3px 5px; font-size: 11px; min-width: 34px; }
+}
+
+/* ================= 手机横屏：压缩纵向空间，操作区压成一行 ================= */
+@media (orientation: landscape) and (max-height: 520px) {
+  .header { padding: 4px 12px; }
+  .header h1 { font-size: 15px; }
+  .container { gap: 4px; padding: 6px; }
+  .panel { padding: 6px 8px; }
+  .controls { display: flex; flex-wrap: nowrap; gap: 6px; align-items: center; }
+  .field { flex-direction: row; gap: 6px; }
+  .field label { font-size: 12px; }
+  .field select { font-size: 14px; width: 68px; padding: 5px 6px; }
+  .controls > .btn { padding: 8px 6px; font-size: 15px; min-height: 36px; }
+  .tabs { margin: 4px 0 2px; padding: 2px; }
+  .tab-btn { padding: 5px 6px; font-size: 15px; }
+  .legend, .table-tip, #dataInfo { display: none; }
+  #tableInfo { font-size: 11px; margin-bottom: 3px; }
+  .lottery-table th, .lottery-table td { padding: 2px 4px; font-size: 10.5px; min-width: 30px; }
+  /* 横屏：恢复普通文档流，整页可上下滑动 */
+  body { height: auto; overflow: visible; display: block; }
+  .container { flex: none; display: block; overflow: visible; }
+  .panel.table-panel { flex: none; display: block; }
+  /* 表格自身带横竖滚动条（横向不再撑破屏幕），尽量占满屏幕高度，下方导出/返回顶部可下滑到达 */
+  #tableWrap { flex: none; max-height: calc(100dvh - 130px); overflow: auto; -webkit-overflow-scrolling: touch; }
+  /* 底部按钮栏：导出占满一行，返回顶部在其下 */
+  .table-footer { display: block; padding-top: 6px; }
+  .table-footer .btn { width: 100%; min-width: 0; margin-bottom: 8px; padding: 10px 10px; font-size: 15px; border-radius: 8px; box-shadow: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🎯 大乐透历史走势分析表</h1>
+    <div class="sub">三张分析表 · 无需部署，直接打开</div>
+  </div>
+  <div id="dataStatus">⏳ 请获取数据</div>
+</div>
+
+<div class="container">
+
+  <div class="panel">
+    <div class="controls">
+      <div class="field">
+        <label for="qishu">请输入期数:</label>
+        <select id="qishu" onchange="generate()">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="30" selected>30</option>
+          <option value="40">40</option>
+          <option value="50">50</option>
+          <option value="60">60</option>
+          <option value="70">70</option>
+          <option value="80">80</option>
+          <option value="90">90</option>
+          <option value="100">100</option>
+          <option value="110">110</option>
+          <option value="120">120</option>
+          <option value="130">130</option>
+          <option value="140">140</option>
+          <option value="150">150</option>
+          <option value="160">160</option>
+          <option value="170">170</option>
+          <option value="180">180</option>
+          <option value="190">190</option>
+          <option value="200">200</option>
+        </select>
+      </div>
+      <button class="btn btn-success" onclick="fetchAndProcess()">获取最新数据</button>
+      <button class="btn btn-primary" onclick="generate()">刷新</button>
+    </div>
+    <div class="tabs" id="tableTabs">
+      <button class="tab-btn active" type="button" onclick="switchTable(1, this)">📊 第一张表</button>
+      <button class="tab-btn" type="button" onclick="switchTable(2, this)">📊 第二张表</button>
+      <button class="tab-btn" type="button" onclick="switchTable(3, this)">📊 第三张表</button>
+    </div>
+    <div class="legend">
+      <span><i class="sw-red"></i>红球号码</span>
+      <span><i class="sw-blue"></i>蓝球号码</span>
+      <span><i class="sw-green"></i>遗漏值</span>
+      <span><i class="sw-orange"></i>下期出现/命中</span>
+    </div>
+    <div id="dataInfo">未加载数据</div>
+  </div>
+
+  <div class="panel table-panel">
+    <div id="tableInfo">请先获取数据后生成表格</div>
+    <div class="table-tip">表格可横向/纵向滚动，表头吸顶；表尾 4 行为「总出现次数 / 平均遗漏值 / 最大遗漏值 / 最大连出值」。</div>
+    <div id="tableWrap"></div>
+    <div class="table-footer">
+      <button class="btn btn-info" onclick="exportTable()">导出表格</button>
+      <button class="btn btn-primary" onclick="backTop()">⬆ 返回顶部</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">⏳ 生成中，请稍候...</div>
+</div>
+
+<!-- 导出组件(SheetJS)：页面加载时自动加载 -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+// ====================== 全局状态 ======================
+let allDraws = [];            // 全部开奖数据（最新在前）：[{num:"2026086", red:[5], blue:[2]}]
+let lastGrid = null;          // 最近一次生成的表格网格（用于导出）
+let lastNcol = 0;
+let lastKind = 0;
+
+// ====================== 表头定义（与 daletou5.py 一致） ======================
+const HEADERS_1 = [
+  "期号", "第一位", "第二位", "第三位", "第四位", "第五位", "蓝球第一位", "蓝球第二位",
+  "第一位", "金(1 2 9 \n10 31 32)", "木(5 6 17 \n18 19 20 \n27 28 35)", "水(13 14 21 \n22 29 30)", "火(3 4 11 \n12 25 26 \n33 34)", "土(7 8 15 \n16 23 24)", "奇(整除2余1)", "偶(整除2余0)", "大(10~20)", "小(1~9)",
+  "第二位", "金(1 2 9 \n10 31 32)", "木(5 6 17 \n18 19 20 \n27 28 35)", "水(13 14 21 \n22 29 30)", "火(3 4 11 \n12 25 26 \n33 34)", "土(7 8 15 \n16 23 24)", "奇(整除2余1)", "偶(整除2余0)", "大(15~27)", "小(1~14)",
+  "第三位", "金(1 2 9 10 \n31 32)", "木(5 6 17 \n18 19 20 \n27 28 35)", "水(13 14 21 \n22 29 30)", "火(3 4 11 \n12 25 26 \n33 34)", "土(7 8 15 \n16 23 24)", "奇(整除2余1)", "偶(整除2余0)", "大(17~30)", "小(5~16)",
+  "第四位", "金(1 2 9 \n10 31 32)", "木(5 6 17 \n18 19 20 \n27 28 35)", "水(13 14 21 \n22 29 30)", "火(3 4 11 \n12 25 26 \n33 34)", "土(7 8 15 \n16 23 24)", "奇(整除2余1)", "偶(整除2余0)", "大(22~34)", "小(7~21)",
+  "第五位", "金(1 2 9 \n10 31 32)", "木(5 6 17 \n18 19 20 \n27 28 35)", "水(13 14 21 \n22 29 30)", "火(3 4 11 \n12 25 26 \n33 34)", "土(7 8 15 \n16 23 24)", "奇(整除2余1)", "偶(整除2余0)", "大(23~35)", "小(8~22)"
+];
+
+const HEADERS_2 = [
+  "蓝球第一位", "蓝球第二位", "跨度(蓝球第\n二位减蓝球\n第一位)", "降", "平", "升", "奇(整除余1)", "偶(整除余0)", "小(1~5)", "大(6~11)",
+  "和值(第一位\n和第二位相加)", "小(1~11)", "大(12~24)", "奇(整除余1)", "偶(整除余0)", "和尾(第一位\n和第二位相\n加之和的个\n位数)", "大(5~9)", "小(0~4)", "奇(整除余1)", "偶(整除余0)",
+  "蓝球第一位", "蓝球第二位", "第一位", "金(1 2 9 \n10)", "木(5 6)", "火(3 4 11 \n12)", "土(7 8)", "奇(整除余1)", "偶(整除余0)", "大(6~11)", "小(1~5)",
+  "第二位", "金(1 2 9 \n10)", "木(5 6)", "火(3 4 11 \n12)", "土(7 8)", "奇(整除余1)", "偶(整除余0)", "大(7~12)", "小(2~6)",
+  "蓝球第一位", "蓝球第二位", "第一位", "0(1 2 3)", "1(4 5 6)", "2(7 8 9)", "3(10 11 12)", "小(0~1)", "大(2~3)",
+  "第二位", "0(1 2 3)", "1(4 5 6)", "2(7 8 9)", "3(10 11 12)", "小(0~1)", "大(2~3)"
+];
+
+const HEADERS_3 = [
+  "", "期号", "", "第一位", "第二位", "第三位", "第四位", "第五位", "", "蓝球第一位", "蓝球第二位",
+  "和值", "上期之和减\n这期之和", "蓝球之和",
+  "前一(开奖号\n码第一位加\n开奖号码第\n五位)",
+  "前一和值上\n一期减这一\n期前一和值", "尾小(0~4)", "尾大(5~9)",
+  "前二(开奖号\n码第二位加\n开奖号码第\n四位)",
+  "前二和值上\n一期减这一期\n前二和值", "尾小(0~4)", "尾大(5~9)",
+  "合值", "尾小(0~4)", "尾大(5~9)",
+  "前一减前二", "和值减合值", "总和值减前一", "",
+  "总和值减前二",
+  "前一减开奖\n号码第一个", "前二减开奖\n号码第二个",
+  "上期开奖号\n码与这期开\n奖号码重复",
+  "前二减开奖\n号码第四个", "前一减开奖\n号码第五个",
+  "前一减上一\n期开奖号码\n第一个", "前二减上一\n期开奖号码\n第二个", "",
+  "开奖号码第\n三个",
+  "这期前二减\n上期开奖号\n码第四个号码",
+  "这期前一减\n上期开奖号\n码第5个号码"
+];
+
+function getHeader(kind) {
+  return kind === 1 ? HEADERS_1 : kind === 2 ? HEADERS_2 : HEADERS_3;
+}
+
+// ====================== 数据获取 ======================
+// 体彩官方接口：单次 pageSize 上限 100，需翻页（并行取 3 页共约 300 期，保证 200 期可选）
+const SPORTTERY_PAGES = [1, 2, 3];
+function sportteryUrl(pageNo) {
+  return 'https://webapi.sporttery.cn/gateway/lottery/getHistoryPageListV1.qry?gameNo=85&provinceId=0&pageSize=100&isVerify=1&pageNo=' + pageNo;
+}
+// 备用数据源：GitHub 自动更新仓库（jsDelivr/GitHub raw 带 CORS，file:// 下可用）
+const GITHUB_DLT_URLS = [
+  'https://cdn.jsdelivr.net/gh/yangxb919/lottery-data@main/data/dlt.json',
+  'https://raw.githubusercontent.com/yangxb919/lottery-data/main/data/dlt.json',
+];
+
+// 内置离线数据（最新在前，共30期，来源：体彩官方 2026-08-01）
+const MOCK_DRAWS = [
+  {issue:"26086",result:"10 11 18 22 35 06 12"},
+  {issue:"26085",result:"03 04 14 28 31 05 07"},
+  {issue:"26084",result:"13 25 30 32 33 04 05"},
+  {issue:"26083",result:"14 15 16 23 26 07 09"},
+  {issue:"26082",result:"16 26 27 28 34 02 06"},
+  {issue:"26081",result:"08 16 18 24 34 09 12"},
+  {issue:"26080",result:"05 10 15 21 23 07 08"},
+  {issue:"26079",result:"06 08 23 26 27 05 12"},
+  {issue:"26078",result:"02 13 20 25 32 08 11"},
+  {issue:"26077",result:"04 14 19 24 27 06 07"},
+  {issue:"26076",result:"15 20 27 28 35 02 11"},
+  {issue:"26075",result:"01 06 16 18 26 04 10"},
+  {issue:"26074",result:"01 04 10 23 25 01 12"},
+  {issue:"26073",result:"04 10 22 23 33 02 12"},
+  {issue:"26072",result:"01 13 26 29 30 09 11"},
+  {issue:"26071",result:"05 13 22 26 32 02 03"},
+  {issue:"26070",result:"04 05 15 21 32 02 11"},
+  {issue:"26069",result:"12 19 21 24 29 03 10"},
+  {issue:"26068",result:"03 11 12 21 22 06 10"},
+  {issue:"26067",result:"06 16 18 19 28 07 11"},
+  {issue:"26066",result:"10 13 19 21 30 04 05"},
+  {issue:"26065",result:"04 11 12 13 25 04 08"},
+  {issue:"26064",result:"03 13 15 17 21 02 07"},
+  {issue:"26063",result:"03 15 20 29 31 01 12"},
+  {issue:"26062",result:"07 15 20 24 29 04 10"},
+  {issue:"26061",result:"10 12 26 31 35 02 12"},
+  {issue:"26060",result:"22 28 30 31 34 01 05"},
+  {issue:"26059",result:"06 13 17 19 26 07 08"},
+  {issue:"26058",result:"07 12 13 18 34 01 05"},
+  {issue:"26057",result:"23 25 26 27 34 04 10"}
+];
+
+function tryFetch(url, timeoutMs) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs || 12000);
+  return fetch(url, { signal: ctrl.signal })
+    .then(r => r.ok ? r.json() : null)
+    .catch(() => null)
+    .finally(() => clearTimeout(timer));
+}
+
+async function fetchAndProcess() {
+  const statusEl = document.getElementById('dataStatus');
+  const infoEl = document.getElementById('dataInfo');
+  statusEl.textContent = '⏳ 正在获取数据...';
+
+  // 策略1：体彩官方接口（并行翻页，取最新 300 期）
+  const sportteryPages = await Promise.all(SPORTTERY_PAGES.map(p => tryFetch(sportteryUrl(p), 15000)));
+  const sportteryLists = sportteryPages.filter(r => r && r.value && Array.isArray(r.value.list) && r.value.list.length).map(r => r.value.list);
+  if (sportteryLists.length) {
+    allDraws = sportteryLists.flat().map(d => {
+      // 保留字符串原样（前导零），gen1 表格显示时与 Python 一致
+      const nums = (d.lotteryDrawResult || '').split(' ').filter(Boolean);
+      return { num: '20' + (d.lotteryDrawNum || ''), red: nums.slice(0, 5), blue: nums.slice(5, 7) };
+    }).slice(0, 300);
+    statusEl.textContent = '✅ 体彩官方数据';
+    infoEl.textContent = '已加载 ' + allDraws.length + ' 期数据（来源：体彩官方，最新 ' + allDraws[0].num + '）';
+    generate();
+    return true;
+  }
+
+  // 策略2：GitHub 镜像
+  for (const url of GITHUB_DLT_URLS) {
+    const data = await tryFetch(url, 15000);
+    if (Array.isArray(data) && data.length > 0 && data[0].front) {
+      allDraws = data.map(d => ({
+        num: '20' + (d.issue || ''),
+        red: (d.front || []).slice(),
+        blue: (d.back || []).slice()
+      })).slice(0, 300);
+      statusEl.textContent = '✅ GitHub镜像数据';
+      infoEl.textContent = '已加载 ' + allDraws.length + ' 期数据（来源：GitHub镜像，最新 ' + (data[0].date || data[0].issue || '') + '）';
+      generate();
+      return true;
+    }
+  }
+
+  // 策略3：内置离线数据
+  allDraws = MOCK_DRAWS.map(d => {
+    const nums = d.result.split(' ').filter(Boolean);
+    return { num: '20' + d.issue, red: nums.slice(0, 5), blue: nums.slice(5, 7) };
+  });
+  statusEl.textContent = '⚠️ 内置离线数据';
+  infoEl.textContent = '实时数据源不可用，使用内置 ' + allDraws.length + ' 期离线数据';
+  generate();
+  return false;
+}
+
+// ====================== 表格生成（与 daletou5.py 逻辑一一对应） ======================
+
+// 遗漏统计的公共实现（对应 daletou5.py 中的 summary 闭包）
+function makeSummary(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, len, grid, setCell) {
+  return function (row, col, string, flag, pFlag, x) {
+    let textP = string;
+    if (grid[row - 1] && grid[row - 1][col] && grid[row - 1][col].text !== undefined) {
+      textP = grid[row - 1][col].text;
+    }
+    if (flag) {
+      dictTotal[col] = (dictTotal[col] || 0) + 1;
+      if (!dictMaxCon[col]) dictMaxCon[col] = [0, 0];
+      dictMaxCon[col][0] += 1;
+      dictMaxCon[col][1] = Math.max(dictMaxCon[col][1], dictMaxCon[col][0]);
+
+      if (pFlag && textP !== string) {
+        if (!dictAvgMiss[col]) dictAvgMiss[col] = [0, 0];
+        dictAvgMiss[col][0] += 1;
+        dictAvgMiss[col][1] += parseInt(textP, 10);
+        dictMaxMiss[col] = Math.max(dictMaxMiss[col] || 0, parseInt(textP, 10));
+      }
+      setCell(row, col, string);
+    } else {
+      if (!dictMaxCon[col]) dictMaxCon[col] = [0, 0];
+      dictMaxCon[col][0] = 0;
+      if (pFlag && textP !== string) {
+        setCell(row, col, String(parseInt(textP, 10) + 1), 'green');
+      } else {
+        setCell(row, col, '1', 'green');
+      }
+    }
+    if (x === len - 1) {
+      const textC = (grid[row] && grid[row][col]) ? grid[row][col].text : string;
+      if (textC !== string) {
+        if (!dictAvgMiss[col]) dictAvgMiss[col] = [0, 0];
+        dictAvgMiss[col][0] += 1;
+        dictAvgMiss[col][1] += parseInt(textC, 10);
+        dictMaxMiss[col] = Math.max(dictMaxMiss[col] || 0, parseInt(textC, 10));
+      }
+    }
+  };
+}
+
+// 与 Python "%.1f" 一致：四舍六入五取偶（银行家舍入）
+function pyFormat1(value) {
+  const scaled = value * 10;
+  const whole = Math.round(scaled);
+  const diff = scaled - whole;
+  let rounded;
+  if (diff === 0.5 || diff === -0.5) {
+    // 恰好 .5：舍入到偶数
+    rounded = (whole % 2 === 0) ? whole : whole + (diff > 0 ? 1 : -1);
+  } else {
+    rounded = whole;
+  }
+  return (rounded / 10).toFixed(1);
+}
+
+// 打印总出现次数/平均遗漏值/最大遗漏值/最大连出值
+function makeSummaryPrint(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, setCell) {
+  return function (row) {
+    setCell(row, 0, '总出现次数');
+    for (const colStr in dictTotal) setCell(row, parseInt(colStr, 10), dictTotal[colStr]);
+
+    setCell(row + 1, 0, '平均遗漏值');
+    for (const colStr in dictAvgMiss) {
+      const lst = dictAvgMiss[colStr];
+      const value = lst[0] !== 0 ? lst[1] / lst[0] : 0;
+      setCell(row + 1, parseInt(colStr, 10), pyFormat1(value));
+    }
+
+    setCell(row + 2, 0, '最大遗漏值');
+    for (const colStr in dictMaxMiss) setCell(row + 2, parseInt(colStr, 10), dictMaxMiss[colStr]);
+
+    setCell(row + 3, 0, '最大连出值');
+    for (const colStr in dictMaxCon) setCell(row + 3, parseInt(colStr, 10), dictMaxCon[colStr][1]);
+  };
+}
+
+// 第一张表（对应 gen1）
+function gen1(qishuArr, red, blue) {
+  const stLine = 0, stCol = -1;
+  const len = qishuArr.length;
+  const ncol = 58;
+  const grid = [];
+  const setCell = (row, col, text, color) => {
+    if (!grid[row]) grid[row] = [];
+    grid[row][col] = { text: String(text), color: color || null };
+  };
+  const dictTotal = {}, dictAvgMiss = {}, dictMaxMiss = {}, dictMaxCon = {};
+  const summary = makeSummary(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, len, grid, setCell);
+  const summaryPrint = makeSummaryPrint(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, setCell);
+
+  for (let x = 0; x < len; x++) {
+    if (x === 0) {
+      for (let y = 0; y < 5; y++) {
+        for (let k = 10; k <= 18; k++) {
+          const col = y * 10 + k + stCol;   // y*10+9 .. y*10+17
+          dictTotal[col] = 0;
+          dictAvgMiss[col] = [0, 0];
+          dictMaxMiss[col] = 0;
+          dictMaxCon[col] = [0, 0];
+        }
+      }
+    }
+    const pFlag = x - 1 >= 0;
+    const nFlag = x + 1 < len;
+    const row = x + stLine;
+    setCell(row, 1 + stCol, String(qishuArr[x]));
+    const r = red[x];           // 字符串数组（保留前导零，与 Python 显示一致）
+    const b = blue[x];
+
+    for (let y = 0; y < 5; y++) {
+      const nStr = r[y];
+      const n = parseInt(nStr, 10);
+      setCell(row, y + 2 + stCol, nStr, 'red');
+      setCell(row, y * 10 + 9 + stCol, nStr, 'red');
+      summary(row, y * 10 + 10 + stCol, "金", [1, 2, 9, 10, 31, 32].includes(n), pFlag, x);
+      summary(row, y * 10 + 11 + stCol, "木", [5, 6, 17, 18, 19, 20, 27, 28, 35].includes(n), pFlag, x);
+      summary(row, y * 10 + 12 + stCol, "水", [13, 14, 21, 22, 29, 30].includes(n), pFlag, x);
+      summary(row, y * 10 + 13 + stCol, "火", [3, 4, 11, 12, 25, 26, 33, 34].includes(n), pFlag, x);
+      summary(row, y * 10 + 14 + stCol, "土", [7, 8, 15, 16, 23, 24].includes(n), pFlag, x);
+      summary(row, y * 10 + 15 + stCol, "奇", (n & 1), pFlag, x);
+      summary(row, y * 10 + 16 + stCol, "偶", !(n & 1), pFlag, x);
+      if (y === 0) {
+        summary(row, y * 10 + 17 + stCol, "大", 10 <= n && n <= 20, pFlag, x);
+        summary(row, y * 10 + 18 + stCol, "小", 1 <= n && n <= 9, pFlag, x);
+      } else if (y === 1) {
+        summary(row, y * 10 + 17 + stCol, "大", 15 <= n && n <= 27, pFlag, x);
+        summary(row, y * 10 + 18 + stCol, "小", 1 <= n && n <= 14, pFlag, x);
+      } else if (y === 2) {
+        summary(row, y * 10 + 17 + stCol, "大", 17 <= n && n <= 30, pFlag, x);
+        summary(row, y * 10 + 18 + stCol, "小", 5 <= n && n <= 16, pFlag, x);
+      } else if (y === 3) {
+        summary(row, y * 10 + 17 + stCol, "大", 22 <= n && n <= 34, pFlag, x);
+        summary(row, y * 10 + 18 + stCol, "小", 7 <= n && n <= 21, pFlag, x);
+      } else if (y === 4) {
+        summary(row, y * 10 + 17 + stCol, "大", 23 <= n && n <= 35, pFlag, x);
+        summary(row, y * 10 + 18 + stCol, "小", 8 <= n && n <= 22, pFlag, x);
+      }
+    }
+    for (let y = 0; y < 2; y++) {
+      setCell(row, y + 7 + stCol, b[y], 'blue');
+    }
+  }
+  summaryPrint(stLine + len + 1);
+  return { grid, ncol };
+}
+
+// 第二张表（对应 gen2）
+function gen2(qishuArr, red, blue) {
+  const stLine = -1, stCol = -1;
+  const len = qishuArr.length;
+  const ncol = 56;
+  const grid = [];
+  const setCell = (row, col, text, color) => {
+    if (!grid[row]) grid[row] = [];
+    grid[row][col] = { text: String(text), color: color || null };
+  };
+  const dictTotal = {}, dictAvgMiss = {}, dictMaxMiss = {}, dictMaxCon = {};
+  const summary = makeSummary(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, len, grid, setCell);
+  const summaryPrint = makeSummaryPrint(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, setCell);
+
+  const NOT_INIT = [1, 2, 3, 11, 16, 21, 22, 23, 32, 41, 42, 43, 50];
+  for (let x = 0; x < len; x++) {
+    if (x === 0) {
+      for (let y = 4; y <= 56; y++) {
+        if (NOT_INIT.includes(y)) continue;
+        const col = y + stCol;
+        dictTotal[col] = 0;
+        dictAvgMiss[col] = [0, 0];
+        dictMaxMiss[col] = 0;
+        dictMaxCon[col] = [0, 0];
+      }
+    }
+    const pFlag = x - 1 >= 0;
+    const nFlag = x + 1 < len;
+    const row = x + stLine + 1;
+    const m = parseInt(blue[x][0], 10);
+    const n = parseInt(blue[x][1], 10);
+
+    setCell(row, 1 + stCol, m, 'blue');
+    setCell(row, 2 + stCol, n, 'blue');
+
+    const d = n - m;
+    setCell(row, 3 + stCol, d);
+    if (nFlag) {
+      const dNext = parseInt(blue[x + 1][1], 10) - parseInt(blue[x + 1][0], 10);
+      if (d === dNext) setCell(row, 3 + stCol, d, 'red');
+      summary(row, 4 + stCol, "降", d < dNext, pFlag, x);
+      summary(row, 5 + stCol, "平", d === dNext, pFlag, x);
+      summary(row, 6 + stCol, "升", d > dNext, pFlag, x);
+    }
+    summary(row, 7 + stCol, "奇", d & 1, pFlag, x);
+    summary(row, 8 + stCol, "偶", !(d & 1), pFlag, x);
+    summary(row, 9 + stCol, "小", 1 <= d && d <= 5, pFlag, x);
+    summary(row, 10 + stCol, "大", 6 <= d && d <= 11, pFlag, x);
+
+    const s = m + n;
+    setCell(row, 11 + stCol, s);
+    if (nFlag) {
+      if (s === parseInt(blue[x + 1][0], 10) + parseInt(blue[x + 1][1], 10)) setCell(row, 11 + stCol, s, 'red');
+    }
+    summary(row, 12 + stCol, "小", 1 <= s && s <= 11, pFlag, x);
+    summary(row, 13 + stCol, "大", 12 <= s && s <= 23, pFlag, x);
+    summary(row, 14 + stCol, "奇", s & 1, pFlag, x);
+    summary(row, 15 + stCol, "偶", !(s & 1), pFlag, x);
+
+    const g = s % 10;
+    setCell(row, 16 + stCol, g);
+    if (nFlag) {
+      if (g === (parseInt(blue[x + 1][0], 10) + parseInt(blue[x + 1][1], 10)) % 10) setCell(row, 16 + stCol, g, 'red');
+    }
+    summary(row, 17 + stCol, "大", 5 <= g && g <= 9, pFlag, x);
+    summary(row, 18 + stCol, "小", 0 <= g && g <= 4, pFlag, x);
+    summary(row, 19 + stCol, "奇", g & 1, pFlag, x);
+    summary(row, 20 + stCol, "偶", !(g & 1), pFlag, x);
+
+    setCell(row, 21 + stCol, m, 'blue');
+    setCell(row, 22 + stCol, n, 'blue');
+    setCell(row, 23 + stCol, m, 'blue');
+    summary(row, 24 + stCol, "金", [1, 2, 9, 10].includes(m), pFlag, x);
+    summary(row, 25 + stCol, "木", [5, 6].includes(m), pFlag, x);
+    summary(row, 26 + stCol, "火", [3, 4, 11, 12].includes(m), pFlag, x);
+    summary(row, 27 + stCol, "土", [7, 8].includes(m), pFlag, x);
+    summary(row, 28 + stCol, "奇", m & 1, pFlag, x);
+    summary(row, 29 + stCol, "偶", !(m & 1), pFlag, x);
+    summary(row, 30 + stCol, "大", 6 <= m && m <= 11, pFlag, x);
+    summary(row, 31 + stCol, "小", 1 <= m && m <= 5, pFlag, x);
+
+    setCell(row, 32 + stCol, n, 'blue');
+    summary(row, 33 + stCol, "金", [1, 2, 9, 10].includes(n), pFlag, x);
+    summary(row, 34 + stCol, "木", [5, 6].includes(n), pFlag, x);
+    summary(row, 35 + stCol, "火", [3, 4, 11, 12].includes(n), pFlag, x);
+    summary(row, 36 + stCol, "土", [7, 8].includes(n), pFlag, x);
+    summary(row, 37 + stCol, "奇", n & 1, pFlag, x);
+    summary(row, 38 + stCol, "偶", !(n & 1), pFlag, x);
+    summary(row, 39 + stCol, "大", 7 <= n && n <= 12, pFlag, x);
+    summary(row, 40 + stCol, "小", 2 <= n && n <= 6, pFlag, x);
+
+    setCell(row, 41 + stCol, m, 'blue');
+    setCell(row, 42 + stCol, n, 'blue');
+    setCell(row, 43 + stCol, m, 'blue');
+    summary(row, 44 + stCol, "0(1 2 3)", [1, 2, 3].includes(m), pFlag, x);
+    summary(row, 45 + stCol, "1(4 5 6)", [4, 5, 6].includes(m), pFlag, x);
+    summary(row, 46 + stCol, "2(7 8 9)", [7, 8, 9].includes(m), pFlag, x);
+    summary(row, 47 + stCol, "3(10 11 12)", [10, 11, 12].includes(m), pFlag, x);
+    summary(row, 48 + stCol, "小", 1 <= m && m <= 6, pFlag, x);
+    summary(row, 49 + stCol, "大", 7 <= m && m <= 12, pFlag, x);
+
+    setCell(row, 50 + stCol, n, 'blue');
+    summary(row, 51 + stCol, "0(1 2 3)", [1, 2, 3].includes(n), pFlag, x);
+    summary(row, 52 + stCol, "1(4 5 6)", [4, 5, 6].includes(n), pFlag, x);
+    summary(row, 53 + stCol, "2(7 8 9)", [7, 8, 9].includes(n), pFlag, x);
+    summary(row, 54 + stCol, "3(10 11 12)", [10, 11, 12].includes(n), pFlag, x);
+    summary(row, 55 + stCol, "小", 1 <= n && n <= 6, pFlag, x);
+    summary(row, 56 + stCol, "大", 7 <= n && n <= 12, pFlag, x);
+  }
+  summaryPrint(len + stLine + 2);
+  return { grid, ncol };
+}
+
+// 第三张表（对应 gen3）
+function gen3(qishuArr, red, blue) {
+  const stLine = -1, stCol = -1;
+  const len = qishuArr.length;
+  const ncol = 41;
+  const grid = [];
+  const setCell = (row, col, text, color) => {
+    if (!grid[row]) grid[row] = [];
+    grid[row][col] = { text: String(text), color: color || null };
+  };
+  const dictTotal = {}, dictAvgMiss = {}, dictMaxMiss = {}, dictMaxCon = {};
+  const summary = makeSummary(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, len, grid, setCell);
+  const summaryPrint = makeSummaryPrint(dictTotal, dictAvgMiss, dictMaxMiss, dictMaxCon, setCell);
+
+  const sum = arr => arr.reduce((a, v) => a + parseInt(v, 10), 0);
+
+  for (let x = 0; x < len; x++) {
+    if (x === 0) {
+      for (const y of [17, 18, 21, 22, 24, 25]) {
+        const col = y + stCol;
+        dictTotal[col] = 0;
+        dictAvgMiss[col] = [0, 0];
+        dictMaxMiss[col] = 0;
+        dictMaxCon[col] = [0, 0];
+      }
+    }
+    const row = x + stLine + 1;
+    setCell(row, 1 + stCol, String(x + 1));
+    setCell(row, 2 + stCol, String(qishuArr[x]));
+
+    const a = parseInt(red[x][0], 10), b = parseInt(red[x][1], 10), c = parseInt(red[x][2], 10),
+          d = parseInt(red[x][3], 10), e = parseInt(red[x][4], 10);
+    const m = parseInt(blue[x][0], 10), n = parseInt(blue[x][1], 10);
+
+    setCell(row, 4 + stCol, a, 'red');
+    setCell(row, 5 + stCol, b, 'red');
+    setCell(row, 6 + stCol, c, 'red');
+    setCell(row, 7 + stCol, d, 'red');
+    setCell(row, 8 + stCol, e, 'red');
+
+    let redNext = new Set();
+    let redPrev = new Set();
+    const redCur = new Set(red[x].map(Number));
+
+    let nFlag = false;
+    if (x + 1 < len) {
+      nFlag = true;
+      redNext = new Set(red[x + 1].map(Number));
+    }
+    let pFlag = false;
+    if (x - 1 >= 0) {
+      pFlag = true;
+      redPrev = new Set(red[x - 1].map(Number));
+    }
+
+    // 号码出现在下一期红球时标橙色
+    function judgeRed(row, col, num, string) {
+      if (nFlag && redNext.has(num)) setCell(row, col, string || String(num), 'orange');
+    }
+
+    setCell(row, 10 + stCol, m, 'blue');
+    judgeRed(row, 10 + stCol, m);
+    setCell(row, 11 + stCol, n, 'blue');
+    judgeRed(row, 11 + stCol, n);
+
+    const s = a + b + c + d + e;
+    setCell(row, 12 + stCol, s);
+    judgeRed(row, 12 + stCol, s);
+    if (pFlag) {
+      const sD = sum(red[x - 1]) - s;
+      setCell(row, 13 + stCol, sD);
+      judgeRed(row, 13 + stCol, sD);
+    }
+
+    const sB = m + n;
+    setCell(row, 14 + stCol, sB);
+    judgeRed(row, 14 + stCol, sB);
+
+    const sAE = a + e;
+    setCell(row, 15 + stCol, sAE);
+    judgeRed(row, 15 + stCol, sAE);
+
+    if (pFlag) {
+      const sAEPrevD = parseInt(red[x - 1][0], 10) + parseInt(red[x - 1][4], 10) - sAE;
+      setCell(row, 16 + stCol, sAEPrevD);
+      judgeRed(row, 16 + stCol, sAEPrevD);
+    }
+
+    let g = sAE % 10;
+    summary(row, 17 + stCol, "尾小", 0 <= g && g <= 4, pFlag, x);
+    if (0 <= g && g <= 4) judgeRed(row, 17 + stCol, g, "尾小");
+    summary(row, 18 + stCol, "尾大", 5 <= g && g <= 9, pFlag, x);
+    if (5 <= g && g <= 9) judgeRed(row, 18 + stCol, g, "尾大");
+
+    const sBD = b + d;
+    setCell(row, 19 + stCol, sBD);
+    judgeRed(row, 19 + stCol, sBD);
+    if (pFlag) {
+      const sBDPrevD = parseInt(red[x - 1][1], 10) + parseInt(red[x - 1][3], 10) - sBD;
+      setCell(row, 20 + stCol, sBDPrevD);
+      judgeRed(row, 20 + stCol, sBDPrevD);
+    }
+    g = sBD % 10;
+    summary(row, 21 + stCol, "尾小", 0 <= g && g <= 4, pFlag, x);
+    if (0 <= g && g <= 4) judgeRed(row, 21 + stCol, g, "尾小");
+    summary(row, 22 + stCol, "尾大", 5 <= g && g <= 9, pFlag, x);
+    if (5 <= g && g <= 9) judgeRed(row, 22 + stCol, g, "尾大");
+
+    const sAEBD = sAE + sBD;
+    setCell(row, 23 + stCol, sAEBD);
+    judgeRed(row, 23 + stCol, sAEBD);
+    g = sAEBD % 10;
+    summary(row, 24 + stCol, "尾小", 0 <= g && g <= 4, pFlag, x);
+    if (0 <= g && g <= 4) judgeRed(row, 24 + stCol, g, "尾小");
+    summary(row, 25 + stCol, "尾大", 5 <= g && g <= 9, pFlag, x);
+    if (5 <= g && g <= 9) judgeRed(row, 25 + stCol, g, "尾大");
+
+    const sAEBDD = sAE - sBD;
+    setCell(row, 26 + stCol, sAEBDD);
+    judgeRed(row, 26 + stCol, sAEBDD);
+
+    const sSAEBDD = s - sAEBD;
+    setCell(row, 27 + stCol, sSAEBDD);
+    judgeRed(row, 27 + stCol, sSAEBDD);
+
+    const sSAED = s - sAE;
+    setCell(row, 28 + stCol, sSAED);
+    judgeRed(row, 28 + stCol, sSAED);
+
+    const sSBDD = s - sBD;
+    setCell(row, 30 + stCol, sSBDD);
+    judgeRed(row, 30 + stCol, sSBDD);
+
+    const sAEAD = sAE - a;
+    setCell(row, 31 + stCol, sAEAD);
+    judgeRed(row, 31 + stCol, sAEAD);
+
+    const sBDBD = sBD - b;
+    setCell(row, 32 + stCol, sBDBD);
+    judgeRed(row, 32 + stCol, sBDBD);
+
+    if (pFlag) {
+      const inter = [...redPrev].filter(v => redCur.has(v));
+      setCell(row, 33 + stCol, inter.join(','));
+      if (nFlag && inter.some(v => redNext.has(v))) {
+        setCell(row, 33 + stCol, inter.join(','), 'orange');
+      }
+    }
+
+    const sBDDD = sBD - d;
+    setCell(row, 34 + stCol, sBDDD);
+    judgeRed(row, 34 + stCol, sBDDD);
+
+    const sAEED = sAE - e;
+    setCell(row, 35 + stCol, sAEED);
+    judgeRed(row, 35 + stCol, sAEED);
+
+    if (pFlag) {
+      const sAEPrevAD = sAE - parseInt(red[x - 1][0], 10);
+      setCell(row, 36 + stCol, sAEPrevAD);
+      judgeRed(row, 36 + stCol, sAEPrevAD);
+
+      const sBDPrevBD = sBD - parseInt(red[x - 1][1], 10);
+      setCell(row, 37 + stCol, sBDPrevBD);
+      judgeRed(row, 37 + stCol, sBDPrevBD);
+    }
+
+    setCell(row, 39 + stCol, c);
+    judgeRed(row, 39 + stCol, c);
+
+    if (pFlag) {
+      const sBDPrevDD = sBD - parseInt(red[x - 1][3], 10);
+      setCell(row, 40 + stCol, sBDPrevDD);
+      judgeRed(row, 40 + stCol, sBDPrevDD);
+
+      const sAEPrevDD = sAE - parseInt(red[x - 1][4], 10);
+      setCell(row, 41 + stCol, sAEPrevDD);
+      judgeRed(row, 41 + stCol, sAEPrevDD);
+    }
+  }
+  summaryPrint(len + stLine + 2);
+  return { grid, ncol };
+}
+
+// ====================== 渲染 ======================
+function renderTable(kind, grid, ncol) {
+  lastGrid = grid; lastNcol = ncol; lastKind = kind;
+  const wrap = document.getElementById('tableWrap');
+  const headers = getHeader(kind);
+  const stickyCols = kind === 3 ? 3 : 1;   // 期号锚点列吸左（表3为 序号+期号）
+  let html = '<table class="lottery-table"><thead><tr>';
+  for (let c = 0; c < headers.length; c++) {
+    const cls = c < stickyCols ? ' class="sticky"' : '';
+    html += '<th' + cls + '>' + headers[c].split('\n').join('<br>') + '</th>';
+  }
+  html += '</tr></thead><tbody>';
+  const sumStart = grid.length - 4;
+  for (let r = 0; r < grid.length; r++) {
+    const row = grid[r];
+    const trCls = r >= sumStart ? ' class="sum-row"' : '';
+    html += '<tr' + trCls + '>';
+    for (let c = 0; c < ncol; c++) {
+      const cell = row ? row[c] : null;
+      const stickyCls = c < stickyCols ? 'sticky ' : '';
+      if (!cell) {
+        html += '<td class="' + stickyCls.trim() + '"></td>';
+      } else {
+        const ccls = cell.color ? ' c-' + cell.color : '';
+        html += '<td class="' + (stickyCls + ccls).trim() + '">' + cell.text + '</td>';
+      }
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+let currentKind = 1;
+function switchTable(kind, btn) {
+  currentKind = kind;
+  document.querySelectorAll('#tableTabs .tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  generate();
+}
+
+function generate() {
+  if (!allDraws.length) {
+    alert('请先获取数据');
+    fetchAndProcess();
+    return;
+  }
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('show');
+  setTimeout(() => {
+    try {
+      doGenerate();
+    } catch (e) {
+      console.error(e);
+      alert('生成表格出错: ' + e.message);
+    } finally {
+      overlay.classList.remove('show');
+    }
+  }, 30);
+}
+
+function doGenerate() {
+  const qishuEl = document.getElementById('qishu');
+  let q = parseInt(qishuEl.value, 10);
+  if (!q || isNaN(q) || q < 1 || q > 200) q = 30;
+  qishuEl.value = q;
+
+  // 与 daletou5.py 一致：跳过最新一期（list[0]），取前 qishu 期，再倒序（旧→新）
+  const seq = allDraws.slice(1, q + 1).reverse();
+  const qishuArr = seq.map(d => d.num);
+  const red = seq.map(d => d.red);
+  const blue = seq.map(d => d.blue);
+
+  const kind = currentKind;
+  let result;
+  if (kind === 1) result = gen1(qishuArr, red, blue);
+  else if (kind === 2) result = gen2(qishuArr, red, blue);
+  else result = gen3(qishuArr, red, blue);
+
+  renderTable(kind, result.grid, result.ncol);
+
+  const names = { 1: '第一张表', 2: '第二张表', 3: '第三张表' };
+  document.getElementById('tableInfo').textContent =
+    '📋 ' + names[kind] + ' · 显示 ' + qishuArr.length + ' 期（' + qishuArr[0] + ' ~ ' + qishuArr[qishuArr.length - 1] + '）';
+}
+
+// ====================== 导出 ======================
+function exportTable() {
+  if (typeof XLSX === 'undefined') {
+    alert('导出组件未加载，请检查网络后重试');
+    return;
+  }
+  if (!lastGrid || !lastNcol) {
+    alert('请先生成表格');
+    return;
+  }
+  const headers = getHeader(lastKind);
+  const names = { 1: '第一张表', 2: '第二张表', 3: '第三张表' };
+  const aoa = [headers.map(h => h.split('\n').join(''))];
+  for (const row of lastGrid) {
+    const line = [];
+    for (let c = 0; c < lastNcol; c++) line.push(row && row[c] ? row[c].text : '');
+    aoa.push(line);
+  }
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = headers.map(() => ({ wch: 7 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, names[lastKind] || '表格');
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const fname = '大乐透走势表_' + names[lastKind] + '_' + now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate()) +
+    '_' + pad(now.getHours()) + '-' + pad(now.getMinutes()) + '-' + pad(now.getSeconds()) + '-' +
+    String(now.getMilliseconds()).padStart(3, '0') + '.xlsx';
+  XLSX.writeFile(wb, fname);
+}
+
+// ====================== 返回顶部 ======================
+// 手机端为内部滚动（#tableWrap），桌面端为窗口滚动，两者都处理
+function backTop() {
+  const wrap = document.getElementById('tableWrap');
+  if (wrap) wrap.scrollTo({ top: 0, behavior: 'smooth' });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ====================== 初始化 ======================
+window.onload = function () {
+  fetchAndProcess();
+};
+</script>
+</body>
+</html>
