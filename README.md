@@ -2,7 +2,8 @@
 
 将 [daletou_fenxi](https://github.com/Tony0726/daletou_fenxi)（历史走势分析表）与 [daletou_yuce](https://github.com/Tony0726/daletou_yuce)（预测工具）两个独立页面整合为一个入口，点击顶部标题即可在「分析」与「预测」之间切换。
 
-- 在线访问（GitHub Pages）：https://tony0726.github.io/daletou_zong/
+- 在线访问（Cloudflare Pages）：https://daletou-zong.pages.dev/
+- 备用（GitHub Pages）：https://tony0726.github.io/daletou_zong/
 
 ## 实时更新原理
 
