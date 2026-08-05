@@ -6,16 +6,14 @@
 
 ## 实时更新原理
 
-壳页面（`index.html`）通过两个 `<iframe>` 直接加载两个**源仓库自身的 GitHub Pages**：
+壳页面（`index.html`）通过两个 `<iframe>` 直接加载两个网站的 **Cloudflare Pages**：
 
 | 标签页 | 内容来源 |
 |---|---|
-| 📊 大乐透历史走势分析表 | https://tony0726.github.io/daletou_fenxi/ |
-| 🏆 大乐透预测工具 | https://tony0726.github.io/daletou_yuce/ |
+| 📊 大乐透历史走势分析表 | https://daletou-fenxi.pages.dev |
+| 🏆 大乐透预测工具 | https://daletou-yuce.pages.dev |
 
-源仓库向 `main` 分支推送代码后，其 GitHub Pages **约 1 分钟内自动重新部署**，壳页面无需任何改动即可展示最新内容——因此天然接近实时，无需任何同步机制。
-
-> 前提：daletou_fenxi / daletou_yuce 需保持 GitHub Pages 开启状态（目前均已开启）。
+源网站更新部署后，壳页面无需任何改动即可展示最新内容——天然接近实时，无需任何同步机制。
 
 ## 整合方式
 
