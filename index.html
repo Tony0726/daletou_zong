@@ -3,14 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#d32f2f">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#121212">
 <title>大乐透 · 分析 / 预测 整合版</title>
 <style>
+/* 主题色板：浅色为默认，深色根据系统 prefers-color-scheme 自动切换 */
+:root {
+  color-scheme: light dark;
+  --bg: #f0f2f5;
+  --text: #333;
+  --panel: #fff;
+  --border: #e0e0e0;
+  --shadow: rgba(0,0,0,0.08);
+  --btn-color: #666;
+  --btn-hover-bg: #fce4e4;
+  --btn-hover-color: #d32f2f;
+  --accent: #d32f2f;
+  --btn-active-color: #fff;
+  --loading-color: #999;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #121212;
+    --text: #e0e0e0;
+    --panel: #1e1e1e;
+    --border: #333;
+    --shadow: rgba(0,0,0,0.5);
+    --btn-color: #a0a0a0;
+    --btn-hover-bg: rgba(211,47,47,0.16);
+    --btn-hover-color: #ff6b6b;
+    --accent: #e53935;
+    --btn-active-color: #fff;
+    --loading-color: #aaa;
+  }
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100vh; height: 100dvh; overflow: hidden; }
 body {
   display: flex; flex-direction: column;
   font-family: 'Microsoft YaHei', 'PingFang SC', -apple-system, sans-serif;
-  background: #f0f2f5; color: #333; font-size: 14px;
+  background: var(--bg); color: var(--text); font-size: 14px;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -18,9 +53,9 @@ body {
 .switcher {
   flex: 0 0 auto;
   display: flex;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 4px var(--shadow);
 }
 .switcher-btn {
   flex: 1;
@@ -28,23 +63,23 @@ body {
   border: none; cursor: pointer;
   background: transparent;
   font-size: 16px; font-weight: 600;
-  color: #666;
+  color: var(--btn-color);
   display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: all .2s;
   touch-action: manipulation;
   -webkit-user-select: none; user-select: none;
 }
-.switcher-btn:hover { background: #fce4e4; color: #d32f2f; }
-.switcher-btn.active { background: #d32f2f; color: #fff; }
+.switcher-btn:hover { background: var(--btn-hover-bg); color: var(--btn-hover-color); }
+.switcher-btn.active { background: var(--accent); color: var(--btn-active-color); }
 .switcher-btn .badge { font-size: 11px; font-weight: 400; opacity: .85; }
 
 /* ===== 内容区（iframe）===== */
 .view { position: relative; flex: 1 1 auto; min-height: 0; display: none; overflow: hidden; }
 .view.active { display: block; }
-.view iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+.view iframe { width: 100%; height: 100%; border: 0; display: block; background: var(--panel); }
 
 /* 加载提示 */
-.view .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #999; font-size: 14px; }
+.view .loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--loading-color); font-size: 14px; }
 </style>
 </head>
 <body>
