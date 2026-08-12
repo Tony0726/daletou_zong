@@ -16,7 +16,8 @@ jobs:
       - name: Prepare site files
         run: |
           mkdir -p dist
-          cp index.html dist/
+          # 复制网站全部静态文件（后续新增静态资源记得在这里同步加上）
+          cp index.html favicon.svg dist/
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
