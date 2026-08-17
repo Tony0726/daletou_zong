@@ -17,7 +17,7 @@ jobs:
         run: |
           mkdir -p dist
           # 复制网站全部静态文件（后续新增静态资源记得在这里同步加上）
-          cp index.html favicon.svg cb94554ec9220d9573211f939beb4c73.txt dist/
+          cp index.html favicon.svg d0ea048f7a2e512b20efd36ddfc70f74.txt dist/
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
